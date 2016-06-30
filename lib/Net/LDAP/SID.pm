@@ -3,6 +3,11 @@ use strict;
 use warnings;
 use Carp;
 
+# for reference
+# https://lists.samba.org/archive/linux/2005-September/014301.html
+# https://froosh.wordpress.com/2005/10/21/hex-sid-to-decimal-sid-translation/
+# https://blogs.msdn.microsoft.com/oldnewthing/20040315-00/?p=40253
+
 =head1 NAME
 
 Net::LDAP::SID - Active Directory Security Identifier manipulation
