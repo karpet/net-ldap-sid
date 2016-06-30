@@ -59,6 +59,12 @@ sub _build {
     }
 }
 
+# SID binary format
+#  byte[0] - revision level
+#  byte[1-7] - 48 bit authority
+#  byte[8]- count of sub authorities
+#  and then count x 32 bit sub authorities
+
 my $PACK_TEMPLATE = 'C Vxx C V*';
 
 sub _build_from_string {
