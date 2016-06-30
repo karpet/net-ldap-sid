@@ -59,7 +59,14 @@ sub _build {
     }
 }
 
-my $PACK_TEMPLATE = 'C Vxx C V*';
+# SID binary format
+#  byte[0] - revision level
+#  byte[1-7] - 48 bit authority
+#  byte[8]- count of sub authorities
+#  and then count x 32 bit sub authorities
+
+my $PACK_TEMPLATE   = 'C C n N V*';
+my $THIRTY_TWO_BITS = 4294967296;
 
 sub _build_from_string {
     my ( $self, $string ) = @_;
@@ -68,19 +75,32 @@ sub _build_from_string {
         $string;
     my $sub_authority_count = scalar @sub_authorities;
 
-    $self->{binary} = pack $PACK_TEMPLATE, $revision_level, $authority,
+    # bit shifting does not work on 32-bit platforms
+    my $authority_high = int( $authority / $THIRTY_TWO_BITS );
+    my $authority_low = $authority - ( $authority_high * $THIRTY_TWO_BITS );
+
+    $self->{binary} = pack $PACK_TEMPLATE, $revision_level,
+        $authority_high,      $authority_low,
         $sub_authority_count, @sub_authorities;
     $self->{string} = $string;
 }
 
 sub _build_from_binary {
     my ( $self, $binary ) = @_;
-    my ($revision_level,      $authority,
+    my ($revision_level,      $authority_high, $authority_low,
         $sub_authority_count, @sub_authorities
     ) = unpack $PACK_TEMPLATE, $binary;
 
+    warn "revision_level=$revision_level";
+    warn "authority_high=$authority_high";
+    warn "authority_low =$authority_low";
+    warn "sub_authority_count=$sub_authority_count";
+    warn "sub_authorities=".join(',', @sub_authorities);
+
     confess "Invalid SID binary: $binary"
         if $sub_authority_count != scalar @sub_authorities;
+
+    my $authority = ( $authority_high * $THIRTY_TWO_BITS ) + $authority_low;
 
     $self->{string} = join '-', 'S', $revision_level, $authority,
         @sub_authorities;
