@@ -46,7 +46,7 @@ sub _debug {
 
 sub _build {
     my ( $self, $bin_or_string ) = @_;
-    if ( substr( $bin_or_string, 0, 1 ) == 'S' ) {
+    if ( substr( $bin_or_string, 0, 1 ) eq 'S' ) {
         $self->_build_from_string($bin_or_string);
     }
     else {
