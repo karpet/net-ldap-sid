@@ -7,6 +7,7 @@ use Carp;
 # https://lists.samba.org/archive/linux/2005-September/014301.html
 # https://froosh.wordpress.com/2005/10/21/hex-sid-to-decimal-sid-translation/
 # https://blogs.msdn.microsoft.com/oldnewthing/20040315-00/?p=40253
+# http://www.selfadsi.org/ads-attributes/user-objectSid.htm
 
 =head1 NAME
 
@@ -59,7 +60,14 @@ sub _build {
     }
 }
 
-my $PACK_TEMPLATE = 'C Vxx C V*';
+# SID binary format
+#  byte[0] - revision level
+#  byte[1] - count of sub authorities
+#  byte[2-8] - 48 bit authority (big-endian)
+#  and then count x 32 bit sub authorities (little-endian)
+
+my $THIRTY_TWO_BITS = 4294967296;
+my $PACK_TEMPLATE   = 'C C n N V*';
 
 sub _build_from_string {
     my ( $self, $string ) = @_;
@@ -68,19 +76,25 @@ sub _build_from_string {
         $string;
     my $sub_authority_count = scalar @sub_authorities;
 
-    $self->{binary} = pack $PACK_TEMPLATE, $revision_level, $authority,
-        $sub_authority_count, @sub_authorities;
+    my $auth_id_16 = int( $authority / $THIRTY_TWO_BITS );
+    my $auth_id_32 = $authority - ( $auth_id_16 * $THIRTY_TWO_BITS );
+
+    $self->{binary} = pack $PACK_TEMPLATE, $revision_level,
+        $sub_authority_count, $auth_id_16, $auth_id_32,
+        @sub_authorities;
     $self->{string} = $string;
 }
 
 sub _build_from_binary {
     my ( $self, $binary ) = @_;
-    my ($revision_level,      $authority,
-        $sub_authority_count, @sub_authorities
-    ) = unpack $PACK_TEMPLATE, $binary;
+    my ( $revision_level, $sub_authority_count,
+        $auth_id_16, $auth_id_32, @sub_authorities )
+        = unpack $PACK_TEMPLATE, $binary;
 
     confess "Invalid SID binary: $binary"
         if $sub_authority_count != scalar @sub_authorities;
+
+    my $authority = ( $auth_id_16 * $THIRTY_TWO_BITS ) + $auth_id_32;
 
     $self->{string} = join '-', 'S', $revision_level, $authority,
         @sub_authorities;
